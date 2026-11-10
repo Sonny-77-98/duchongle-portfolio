@@ -1,0 +1,16 @@
+# Tell k3s's bundled Traefik to trust X-Forwarded-* headers from cloudflared pods,
+# so apps see the visitor's real IP instead of the tunnel pod's IP.
+# 10.42.0.0/16 is k3s's default pod CIDR — change it if you set --cluster-cidr.
+# Apply once:  kubectl apply -f deploy/cluster/traefik-config.yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    ports:
+      web:
+        forwardedHeaders:
+          trustedIPs:
+            - 10.42.0.0/16

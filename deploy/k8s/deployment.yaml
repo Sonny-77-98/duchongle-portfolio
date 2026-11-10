@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portfolio
+  namespace: portfolio
+  labels: { app: portfolio }
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels: { app: portfolio }
+  template:
+    metadata:
+      labels: { app: portfolio }
+    spec:
+      # spread the 2 replicas across Proxmox VMs / k3s nodes
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: portfolio }
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: web
+          # CI replaces the tag with the commit SHA on deploy
+          image: ghcr.io/sonny-77-98/duchongle-portfolio:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }

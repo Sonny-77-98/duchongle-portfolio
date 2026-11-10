@@ -1,0 +1,65 @@
+# Cluster-wide Cloudflare Tunnel — apply ONCE, shared by every site on the cluster
+# (portfolio, lifecouture, future projects). No inbound ports need to be opened
+# on your router or Proxmox hosts; cloudflared dials out to Cloudflare.
+#
+# Setup:
+#   1. Cloudflare dashboard → Zero Trust → Networks → Tunnels → Create tunnel (type: cloudflared)
+#   2. Copy the tunnel token, then:
+#        kubectl create namespace cloudflared
+#        kubectl -n cloudflared create secret generic cloudflared-token --from-literal=token=<TOKEN>
+#   3. In the tunnel's "Public Hostnames" add, for each hostname:
+#        duchongle.com              → HTTP  traefik.kube-system.svc.cluster.local:80
+#        www.duchongle.com          → HTTP  traefik.kube-system.svc.cluster.local:80
+#        lifecouture.duchongle.com  → HTTP  traefik.kube-system.svc.cluster.local:80
+#      Cloudflare creates the proxied DNS records automatically.
+#   4. kubectl apply -f deploy/cluster/cloudflared.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloudflared
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: cloudflared
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: cloudflared }
+  template:
+    metadata:
+      labels: { app: cloudflared }
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: cloudflared }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:2026.10.7
+          args:
+            - tunnel
+            - --no-autoupdate
+            - --metrics
+            - 0.0.0.0:2000
+            - run
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef: { name: cloudflared-token, key: token }
+          livenessProbe:
+            httpGet: { path: /ready, port: 2000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }

@@ -1,0 +1,63 @@
+---
+import type { Project } from "../data/projects";
+
+interface Props {
+  project: Project;
+}
+const { project } = Astro.props;
+const host = new URL(project.url).host;
+---
+
+<article class="card">
+  {project.image && (
+    <a href={project.url} class="thumb" tabindex="-1" aria-hidden="true">
+      <img src={project.image} alt="" loading="lazy" />
+    </a>
+  )}
+  <div class="body">
+    <header>
+      <h3><a href={project.url}>{project.name}</a></h3>
+      {project.status && <span class={`status ${project.status}`}>{project.status.replace("-", " ")}</span>}
+    </header>
+    <p class="host">{host}</p>
+    <p>{project.summary}</p>
+    {project.highlights && (
+      <ul class="highlights">
+        {project.highlights.map((h) => <li>{h}</li>)}
+      </ul>
+    )}
+    <ul class="tags" aria-label="Tech stack">
+      {project.stack.map((s) => <li>{s}</li>)}
+    </ul>
+    <footer>
+      <a href={project.url} class="btn">Visit site →</a>
+      {project.repo && <a href={project.repo} class="btn ghost">Source</a>}
+    </footer>
+  </div>
+</article>
+
+<style>
+  .card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .thumb img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-bottom: 1px solid var(--border); }
+  .body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; flex: 1; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  h3 { margin: 0; font-size: 1.2rem; }
+  h3 a { color: var(--text); text-decoration: none; }
+  .host { margin: 0; color: var(--muted); font-family: var(--mono); font-size: 0.85rem; }
+  p { margin: 0; }
+  .status { font-size: 0.75rem; text-transform: capitalize; padding: 0.15rem 0.55rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .status.live { color: var(--ok); border-color: currentColor; }
+  .highlights { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.95rem; }
+  .tags { list-style: none; padding: 0; margin: 0.25rem 0 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .tags li { font-size: 0.78rem; font-family: var(--mono); padding: 0.2rem 0.5rem; border-radius: 6px; background: var(--chip); }
+  footer { margin-top: auto; padding-top: 0.6rem; display: flex; gap: 0.5rem; }
+</style>
